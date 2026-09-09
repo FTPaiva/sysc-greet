@@ -137,6 +137,7 @@ func (m model) handleWallpaperSelection(selectedOption string) (tea.Model, tea.C
 			cache.SavePreferences(cache.UserPreferences{
 				Theme:       m.currentTheme,
 				Background:  m.selectedBackground,
+				ASCIIEffect: m.asciiEffect,
 				Wallpaper:   m.selectedWallpaper, // Now empty
 				BorderStyle: m.selectedBorderStyle,
 				Session:     sessionName,
@@ -159,6 +160,7 @@ func (m model) handleWallpaperSelection(selectedOption string) (tea.Model, tea.C
 			cache.SavePreferences(cache.UserPreferences{
 				Theme:       m.currentTheme,
 				Background:  m.selectedBackground,
+				ASCIIEffect: m.asciiEffect,
 				Wallpaper:   m.selectedWallpaper,
 				BorderStyle: m.selectedBorderStyle,
 				Session:     sessionName,

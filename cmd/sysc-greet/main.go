@@ -334,9 +334,13 @@ type model struct {
 	menuOptions []string
 	menuIndex   int
 	// Added fields for functional menu system
-	customASCIIText        string
-	selectedBorderStyle    string
-	selectedBackground     string
+	customASCIIText     string
+	selectedBorderStyle string
+	selectedBackground  string
+	// asciiEffect is the title/ASCII-art effect ("beams" for now). It is
+	// independent of selectedBackground so a fullscreen background (sonar, fire,
+	// ...) and the title effect can run at the same time.
+	asciiEffect            string
 	currentTheme           string
 	availableThemes        []string // Built-in + custom theme names
 	borderAnimationEnabled bool
@@ -433,7 +437,7 @@ func (m model) uiAnimationsActive() bool {
 	}
 	// Wall-clock driven animations visible on the login screens
 	if m.mode == ModeLogin || m.mode == ModePassword {
-		switch m.selectedBackground {
+		switch m.asciiEffect {
 		case "ticker", "print", "beams", "pour":
 			return true
 		}
@@ -729,6 +733,10 @@ func initialModel(config Config, screensaverMode bool) model {
 				m.selectedBackground = prefs.Background
 				logDebug("Loaded cached background: %s", prefs.Background)
 			}
+			if prefs.ASCIIEffect != "" {
+				m.asciiEffect = prefs.ASCIIEffect
+				logDebug("Loaded cached ASCII effect: %s", prefs.ASCIIEffect)
+			}
 			if prefs.Wallpaper != "" {
 				m.selectedWallpaper = prefs.Wallpaper
 				logDebug("Loaded cached wallpaper: %s", prefs.Wallpaper)
@@ -774,6 +782,16 @@ func initialModel(config Config, screensaverMode bool) model {
 				configPath := fmt.Sprintf("%s/ascii_configs/%s.conf", dataDir, configFileName)
 
 				switch m.selectedBackground {
+				case "aquarium":
+					// selectedBackground already set on line 589
+					// Leave m.aquariumEffect = nil, will initialize in WindowSizeMsg
+				default:
+					// For gslapper wallpapers, selectedBackground already set on line 589
+					// Don't launch yet - wait for compositor in WindowSizeMsg
+				}
+
+				// Title ASCII effect is independent of the background above
+				switch m.asciiEffect {
 				case "ticker":
 					customRoasts := ""
 					if asciiConfig, err := loadASCIIConfig(configPath); err == nil {
@@ -811,6 +829,7 @@ func initialModel(config Config, screensaverMode bool) model {
 							Text:               ascii,
 							BeamGradientStops:  beamColors,
 							FinalGradientStops: finalColors,
+							SkipBeamPhase:      true,
 						})
 					}
 				case "pour":
@@ -844,12 +863,6 @@ func initialModel(config Config, screensaverMode bool) model {
 							FinalGradientDirection: "horizontal",
 						})
 					}
-				case "aquarium":
-					// selectedBackground already set on line 589
-					// Leave m.aquariumEffect = nil, will initialize in WindowSizeMsg
-				default:
-					// For gslapper wallpapers, selectedBackground already set on line 589
-					// Don't launch yet - wait for compositor in WindowSizeMsg
 				}
 			}
 
@@ -1036,15 +1049,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		if m.selectedBackground == "print" && m.printEffect != nil {
+		if m.asciiEffect == "print" && m.printEffect != nil {
 			m.printEffect.Tick(m.screensaverTime)
 		}
 
-		if m.selectedBackground == "beams" && m.beamsEffect != nil {
+		if m.asciiEffect == "beams" && m.beamsEffect != nil {
 			m.beamsEffect.Update()
 		}
 
-		if m.selectedBackground == "pour" && m.pourEffect != nil {
+		if m.asciiEffect == "pour" && m.pourEffect != nil {
 			m.pourEffect.Update()
 		}
 
@@ -1175,6 +1188,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cache.SavePreferences(cache.UserPreferences{
 					Theme:       m.currentTheme,
 					Background:  m.selectedBackground,
+					ASCIIEffect: m.asciiEffect,
 					Wallpaper:   m.selectedWallpaper,
 					BorderStyle: m.selectedBorderStyle,
 					Session:     session.Name,
@@ -1237,6 +1251,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cache.SavePreferences(cache.UserPreferences{
 					Theme:       m.currentTheme,
 					Background:  m.selectedBackground,
+					ASCIIEffect: m.asciiEffect,
 					Wallpaper:   m.selectedWallpaper,
 					BorderStyle: m.selectedBorderStyle,
 					Session:     sessionName,
@@ -1623,6 +1638,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 						cache.SavePreferences(cache.UserPreferences{
 							Theme:       m.currentTheme,
 							Background:  m.selectedBackground,
+							ASCIIEffect: m.asciiEffect,
 							Wallpaper:   m.selectedWallpaper,
 							BorderStyle: m.selectedBorderStyle,
 							Session:     m.selectedSession.Name,
@@ -1633,7 +1649,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 					}
 
 					// Reset print effect with new ASCII if enabled
-					if m.selectedBackground == "print" && m.printEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
+					if m.asciiEffect == "print" && m.printEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
 						variantIndex := m.asciiArtIndex
 						if variantIndex >= len(asciiConfig.ASCIIVariants) {
 							variantIndex = 0
@@ -1643,7 +1659,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 					}
 
 					// Reset beams effect with new ASCII if enabled
-					if m.selectedBackground == "beams" && m.beamsEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
+					if m.asciiEffect == "beams" && m.beamsEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
 						variantIndex := m.asciiArtIndex
 						if variantIndex >= len(asciiConfig.ASCIIVariants) {
 							variantIndex = 0
@@ -1664,7 +1680,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 					}
 
 					// Reset pour effect with new ASCII if enabled
-					if m.selectedBackground == "pour" && m.pourEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
+					if m.asciiEffect == "pour" && m.pourEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
 						session := m.selectedSession
 						if session != nil {
 							m.resetPourEffectForSession(session.Name)
@@ -1720,6 +1736,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 						cache.SavePreferences(cache.UserPreferences{
 							Theme:       m.currentTheme,
 							Background:  m.selectedBackground,
+							ASCIIEffect: m.asciiEffect,
 							Wallpaper:   m.selectedWallpaper,
 							BorderStyle: m.selectedBorderStyle,
 							Session:     m.selectedSession.Name,
@@ -1730,7 +1747,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 					}
 
 					// Reset print effect with new ASCII if enabled
-					if m.selectedBackground == "print" && m.printEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
+					if m.asciiEffect == "print" && m.printEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
 						variantIndex := m.asciiArtIndex
 						if variantIndex >= len(asciiConfig.ASCIIVariants) {
 							variantIndex = 0
@@ -1740,7 +1757,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 					}
 
 					// Reset beams effect with new ASCII if enabled
-					if m.selectedBackground == "beams" && m.beamsEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
+					if m.asciiEffect == "beams" && m.beamsEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
 						variantIndex := m.asciiArtIndex
 						if variantIndex >= len(asciiConfig.ASCIIVariants) {
 							variantIndex = 0
@@ -1761,7 +1778,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 					}
 
 					// Reset pour effect with new ASCII if enabled
-					if m.selectedBackground == "pour" && m.pourEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
+					if m.asciiEffect == "pour" && m.pourEffect != nil && len(asciiConfig.ASCIIVariants) > 0 {
 						session := m.selectedSession
 						if session != nil {
 							m.resetPourEffectForSession(session.Name)
@@ -1793,6 +1810,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 				cache.SavePreferences(cache.UserPreferences{
 					Theme:       m.currentTheme,
 					Background:  m.selectedBackground,
+					ASCIIEffect: m.asciiEffect,
 					Wallpaper:   m.selectedWallpaper,
 					BorderStyle: m.selectedBorderStyle,
 					Session:     sessionName,
@@ -1817,6 +1835,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 				cache.SavePreferences(cache.UserPreferences{
 					Theme:       m.currentTheme,
 					Background:  m.selectedBackground,
+					ASCIIEffect: m.asciiEffect,
 					Wallpaper:   m.selectedWallpaper,
 					BorderStyle: m.selectedBorderStyle,
 					Session:     sessionName,
@@ -1846,6 +1865,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 					cache.SavePreferences(cache.UserPreferences{
 						Theme:       m.currentTheme,
 						Background:  m.selectedBackground,
+						ASCIIEffect: m.asciiEffect,
 						Wallpaper:   m.selectedWallpaper,
 						BorderStyle: m.selectedBorderStyle,
 						Session:     sessionName,
@@ -1976,7 +1996,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 
 			if m.enableFire {
 				m.selectedBackground = "fire"
-			} else if m.selectedBackground != "pattern" && m.selectedBackground != "ascii-rain" && m.selectedBackground != "matrix" && m.selectedBackground != "fireworks" && m.selectedBackground != "sonar" && m.selectedBackground != "cracktro" && m.selectedBackground != "plasma" && m.selectedBackground != "aquarium" && m.selectedBackground != "ticker" {
+			} else if m.selectedBackground != "pattern" && m.selectedBackground != "ascii-rain" && m.selectedBackground != "matrix" && m.selectedBackground != "fireworks" && m.selectedBackground != "sonar" && m.selectedBackground != "cracktro" && m.selectedBackground != "plasma" && m.selectedBackground != "aquarium" {
 				m.selectedBackground = "none"
 			}
 
@@ -1988,6 +2008,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 				cache.SavePreferences(cache.UserPreferences{
 					Theme:       m.currentTheme,
 					Background:  m.selectedBackground,
+					ASCIIEffect: m.asciiEffect,
 					Wallpaper:   m.selectedWallpaper,
 					BorderStyle: m.selectedBorderStyle,
 					Session:     sessionName,
@@ -2075,6 +2096,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 						cache.SavePreferences(cache.UserPreferences{
 							Theme:       m.currentTheme,
 							Background:  m.selectedBackground,
+							ASCIIEffect: m.asciiEffect,
 							Wallpaper:   m.selectedWallpaper,
 							BorderStyle: m.selectedBorderStyle,
 							Session:     sessionName,
@@ -2083,11 +2105,11 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 						})
 
 						// Reinitialize ASCII effects with new theme colors if active
-						if m.selectedBackground == "beams" && m.beamsEffect != nil && m.selectedSession != nil {
+						if m.asciiEffect == "beams" && m.beamsEffect != nil && m.selectedSession != nil {
 							logDebug("Theme changed to %s - reinitializing beams", themeName)
 							m.resetBeamsEffectForSession(m.selectedSession.Name)
 						}
-						if m.selectedBackground == "pour" && m.pourEffect != nil && m.selectedSession != nil {
+						if m.asciiEffect == "pour" && m.pourEffect != nil && m.selectedSession != nil {
 							logDebug("Theme changed to %s - reinitializing pour", themeName)
 							m.resetPourEffectForSession(m.selectedSession.Name)
 						}
@@ -2133,6 +2155,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 					cache.SavePreferences(cache.UserPreferences{
 						Theme:       m.currentTheme,
 						Background:  m.selectedBackground,
+						ASCIIEffect: m.asciiEffect,
 						Wallpaper:   m.selectedWallpaper,
 						BorderStyle: m.selectedBorderStyle,
 						Session:     sessionName,
@@ -2154,10 +2177,11 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 
 				switch optionName {
 				case "Typewriter":
-					// Typewriter is exclusive - disable other backgrounds/effects
-					m.enableFire = false
-					if m.selectedBackground != "ticker" {
-						m.selectedBackground = "ticker"
+					// Title effect only - independent of the fullscreen background.
+					// The four ASCII effects share m.asciiEffect, so they stay
+					// mutually exclusive with each other but not with backgrounds.
+					if m.asciiEffect != "ticker" {
+						m.asciiEffect = "ticker"
 						// Initialize ticker if not already done
 						if m.typewriterTicker == nil && m.selectedSession != nil {
 							// Load custom roasts from ASCII config
@@ -2185,13 +2209,12 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 							m.typewriterTicker = animations.NewTypewriterTicker(m.selectedSession.Name, customRoasts)
 						}
 					} else {
-						m.selectedBackground = "none"
+						m.asciiEffect = ""
 					}
 				case "Print":
-					// Print is exclusive - disable other backgrounds/effects
-					m.enableFire = false
-					if m.selectedBackground != "print" {
-						m.selectedBackground = "print"
+					// Title effect only - independent of the fullscreen background
+					if m.asciiEffect != "print" {
+						m.asciiEffect = "print"
 						// Initialize print effect with current session's ASCII art
 						if m.selectedSession != nil {
 							// Load ASCII config for current session
@@ -2234,13 +2257,13 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 							}
 						}
 					} else {
-						m.selectedBackground = "none"
+						m.asciiEffect = ""
 						m.printEffect = nil
 					}
 				case "Beams":
-					m.enableFire = false
-					if m.selectedBackground != "beams" {
-						m.selectedBackground = "beams"
+					// Title effect only - does not touch the fullscreen background
+					if m.asciiEffect != "beams" {
+						m.asciiEffect = "beams"
 						if m.selectedSession != nil {
 							sessionName := strings.ToLower(strings.Fields(m.selectedSession.Name)[0])
 
@@ -2288,6 +2311,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 									Text:               ascii,
 									BeamGradientStops:  beamColors,
 									FinalGradientStops: finalColors,
+									SkipBeamPhase:      true,
 								})
 								if m.config.Debug {
 									logDebug("Beams effect initialized")
@@ -2295,13 +2319,13 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 							}
 						}
 					} else {
-						m.selectedBackground = "none"
+						m.asciiEffect = ""
 						m.beamsEffect = nil
 					}
 				case "Pour":
-					m.enableFire = false
-					if m.selectedBackground != "pour" {
-						m.selectedBackground = "pour"
+					// Title effect only - independent of the fullscreen background
+					if m.asciiEffect != "pour" {
+						m.asciiEffect = "pour"
 						if m.selectedSession != nil {
 							sessionName := strings.ToLower(strings.Fields(m.selectedSession.Name)[0])
 
@@ -2363,7 +2387,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 							}
 						}
 					} else {
-						m.selectedBackground = "none"
+						m.asciiEffect = ""
 						m.pourEffect = nil
 					}
 
@@ -2378,6 +2402,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 					cache.SavePreferences(cache.UserPreferences{
 						Theme:       m.currentTheme,
 						Background:  m.selectedBackground,
+						ASCIIEffect: m.asciiEffect,
 						Wallpaper:   m.selectedWallpaper,
 						BorderStyle: m.selectedBorderStyle,
 						Session:     sessionName,

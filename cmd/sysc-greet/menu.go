@@ -93,10 +93,10 @@ func formatSpeedSelector(speed string) string {
 // navigateToASCIIEffectsSubmenu switches to the ASCII effects submenu
 func (m model) navigateToASCIIEffectsSubmenu() (tea.Model, tea.Cmd) {
 	// Check which effects are enabled
-	typewriterEnabled := m.selectedBackground == "ticker"
-	printEnabled := m.selectedBackground == "print"
-	beamsEnabled := m.selectedBackground == "beams"
-	pourEnabled := m.selectedBackground == "pour"
+	typewriterEnabled := m.asciiEffect == "ticker"
+	printEnabled := m.asciiEffect == "print"
+	beamsEnabled := m.asciiEffect == "beams"
+	pourEnabled := m.asciiEffect == "pour"
 
 	m.menuOptions = []string{
 		"← Back",

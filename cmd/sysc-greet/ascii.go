@@ -208,7 +208,7 @@ func (m model) getSessionASCII() string {
 	currentASCII := asciiConfig.ASCIIVariants[variantIndex]
 
 	// Use print effect if enabled
-	if m.selectedBackground == "print" && m.printEffect != nil {
+	if m.asciiEffect == "print" && m.printEffect != nil {
 		// Get visible lines from print effect
 		visibleLines := m.printEffect.GetVisibleLines()
 		currentASCII = strings.Join(visibleLines, "\n")
@@ -217,14 +217,14 @@ func (m model) getSessionASCII() string {
 		}
 	}
 
-	// Use beams effect if enabled
-	if m.selectedBackground == "beams" && m.beamsEffect != nil {
+	// Use beams effect if enabled (independent of the fullscreen background)
+	if m.asciiEffect == "beams" && m.beamsEffect != nil {
 		// Beams effect renders with its own colors
 		return m.beamsEffect.Render()
 	}
 
 	// Use pour effect if enabled
-	if m.selectedBackground == "pour" && m.pourEffect != nil {
+	if m.asciiEffect == "pour" && m.pourEffect != nil {
 		// Pour effect renders with its own colors
 		return m.pourEffect.Render()
 	}
@@ -754,7 +754,7 @@ func (m model) getSessionArt(sessionName string) string {
 
 // resetPrintEffectForSession resets the print effect with the specified session's ASCII
 func (m *model) resetPrintEffectForSession(sessionName string) {
-	if m.selectedBackground != "print" || m.printEffect == nil {
+	if m.asciiEffect != "print" || m.printEffect == nil {
 		return
 	}
 
@@ -789,7 +789,7 @@ func (m *model) resetPrintEffectForSession(sessionName string) {
 
 // resetPourEffectForSession resets the pour effect with the specified session's ASCII
 func (m *model) resetPourEffectForSession(sessionName string) {
-	if m.selectedBackground != "pour" || m.pourEffect == nil {
+	if m.asciiEffect != "pour" || m.pourEffect == nil {
 		return
 	}
 
@@ -851,7 +851,7 @@ func (m *model) resetPourEffectForSession(sessionName string) {
 
 // resetBeamsEffectForSession resets the beams effect with the specified session's ASCII
 func (m *model) resetBeamsEffectForSession(sessionName string) {
-	if m.selectedBackground != "beams" || m.beamsEffect == nil {
+	if m.asciiEffect != "beams" || m.beamsEffect == nil {
 		return
 	}
 
@@ -900,6 +900,7 @@ func (m *model) resetBeamsEffectForSession(sessionName string) {
 			Text:               ascii,
 			BeamGradientStops:  beamColors,
 			FinalGradientStops: finalColors,
+			SkipBeamPhase:      true,
 		})
 	}
 }

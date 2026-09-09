@@ -74,8 +74,8 @@ func (m model) renderDualBorderLayout(termWidth, termHeight int) string {
 	// TypewriterTicker replaces SESSIONS title when enabled
 	var titleLine string
 	
-	// Show typewriter text if ticker is enabled as background
-	if m.selectedBackground == "ticker" && m.typewriterTicker != nil {
+	// Show typewriter text if ticker effect is enabled
+	if m.asciiEffect == "ticker" && m.typewriterTicker != nil {
 		tickerText := m.typewriterTicker.GetTypewriterText(innerWidth - 6)
 		titleLine = lipgloss.NewStyle().
 			Foreground(innerBorderColor).
@@ -128,7 +128,7 @@ func (m model) renderDualBorderLayout(termWidth, termHeight int) string {
 	// Add matrix to backgrounds that remove outer border
 	// Add fireworks to backgrounds that remove outer border
 	// Add aquarium to backgrounds that remove outer border
-	if m.selectedBackground == "fire" || m.selectedBackground == "ascii-rain" || m.selectedBackground == "matrix" || m.selectedBackground == "ticker" || m.selectedBackground == "fire+rain" || m.selectedBackground == "fireworks" || m.selectedBackground == "sonar" || m.selectedBackground == "cracktro" || m.selectedBackground == "aquarium" || m.selectedBackground == "plasma" {
+	if m.selectedBackground == "fire" || m.selectedBackground == "ascii-rain" || m.selectedBackground == "matrix" || m.asciiEffect == "ticker" || m.selectedBackground == "fire+rain" || m.selectedBackground == "fireworks" || m.selectedBackground == "sonar" || m.selectedBackground == "cracktro" || m.selectedBackground == "aquarium" || m.selectedBackground == "plasma" {
 		helpText := m.renderMainHelp()
 		helpStyle := lipgloss.NewStyle().
 			Foreground(FgMuted).

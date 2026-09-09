@@ -67,6 +67,7 @@ func LoadSelectedSession() (*sessions.Session, error) {
 type UserPreferences struct {
 	Theme       string `json:"theme"`        // Last selected theme
 	Background  string `json:"background"`   // Last selected background animation (aquarium, matrix, fire, etc.)
+	ASCIIEffect string `json:"ascii_effect"` // Last selected title ASCII effect ("beams"), independent of Background
 	Wallpaper   string `json:"wallpaper"`    // Last selected gslapper video wallpaper (separate from background effect)
 	BorderStyle string `json:"border_style"` // Last selected border style
 	Session     string `json:"session"`      // Last selected session

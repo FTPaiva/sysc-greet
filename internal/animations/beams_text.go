@@ -48,6 +48,8 @@ type BeamsTextEffect struct {
 	currentDiag    int
 	holdCounter    int // Frames to hold after completion before reset
 
+	skipBeamPhase bool // Start (and restart) directly in "final_wipe", skipping the beam sweep
+
 	rng *rand.Rand
 }
 
@@ -99,6 +101,7 @@ type BeamsTextConfig struct {
 	FinalGradientSteps   int
 	FinalGradientFrames  int
 	FinalWipeSpeed       int
+	SkipBeamPhase        bool // Skip the beam sweep; play only the diagonal final wipe, repeated
 }
 
 // NewBeamsTextEffect creates a new beams text effect
@@ -166,10 +169,14 @@ func NewBeamsTextEffect(config BeamsTextConfig) *BeamsTextEffect {
 		beamDelayCount:       0,
 		currentDiag:          0,
 		holdCounter:          0,
+		skipBeamPhase:        config.SkipBeamPhase,
 		rng:                  rng,
 	}
 
 	b.init()
+	if b.skipBeamPhase {
+		b.phase = "final_wipe"
+	}
 	return b
 }
 
@@ -673,6 +680,9 @@ func (b *BeamsTextEffect) Render() string {
 // Reset restarts the animation
 func (b *BeamsTextEffect) Reset() {
 	b.phase = "beams"
+	if b.skipBeamPhase {
+		b.phase = "final_wipe"
+	}
 	b.frameCount = 0
 	b.beamDelayCount = 0
 	b.currentDiag = 0
