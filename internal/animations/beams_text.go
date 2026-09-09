@@ -48,7 +48,8 @@ type BeamsTextEffect struct {
 	currentDiag    int
 	holdCounter    int // Frames to hold after completion before reset
 
-	skipBeamPhase bool // Start (and restart) directly in "final_wipe", skipping the beam sweep
+	skipBeamPhase bool   // Start (and restart) directly in "final_wipe", skipping the beam sweep
+	baseColor     string // Resting color for every char in skip mode; wipe brightens over it, then fades back
 
 	rng *rand.Rand
 }
@@ -101,7 +102,8 @@ type BeamsTextConfig struct {
 	FinalGradientSteps   int
 	FinalGradientFrames  int
 	FinalWipeSpeed       int
-	SkipBeamPhase        bool // Skip the beam sweep; play only the diagonal final wipe, repeated
+	SkipBeamPhase        bool   // Skip the beam sweep; play only the diagonal final wipe, repeated
+	BaseColor            string // Resting color of the logo when SkipBeamPhase is set (default white); the wipe passes over it like a reflection
 }
 
 // NewBeamsTextEffect creates a new beams text effect
@@ -147,6 +149,9 @@ func NewBeamsTextEffect(config BeamsTextConfig) *BeamsTextEffect {
 	if config.FinalWipeSpeed == 0 {
 		config.FinalWipeSpeed = 3
 	}
+	if config.BaseColor == "" {
+		config.BaseColor = "#ffffff"
+	}
 
 	b := &BeamsTextEffect{
 		width:                config.Width,
@@ -170,6 +175,7 @@ func NewBeamsTextEffect(config BeamsTextConfig) *BeamsTextEffect {
 		currentDiag:          0,
 		holdCounter:          0,
 		skipBeamPhase:        config.SkipBeamPhase,
+		baseColor:            config.BaseColor,
 		rng:                  rng,
 	}
 
@@ -178,6 +184,18 @@ func NewBeamsTextEffect(config BeamsTextConfig) *BeamsTextEffect {
 		b.phase = "final_wipe"
 	}
 	return b
+}
+
+// primeRestingLogo makes every character visible in the resting color so the
+// logo is always on screen and the wipe only adds a moving highlight on top.
+func (b *BeamsTextEffect) primeRestingLogo() {
+	for i := range b.chars {
+		b.chars[i].visible = true
+		b.chars[i].sceneActive = ""
+		b.chars[i].sceneFrame = 0
+		b.chars[i].currentSymbol = b.chars[i].original
+		b.chars[i].currentColor = b.baseColor
+	}
 }
 
 // init initializes characters and beam groups
@@ -241,6 +259,10 @@ func (b *BeamsTextEffect) init() {
 	b.createColumnGroups()
 	b.shuffleGroups()
 	b.createDiagonalGroups()
+
+	if b.skipBeamPhase {
+		b.primeRestingLogo()
+	}
 }
 
 // createRowGroups creates beam groups for each row
@@ -620,6 +642,12 @@ func (b *BeamsTextEffect) updateCharacterAnimations() {
 
 			framesPerStep := b.finalGradientFrames
 			totalFrames := gradientLen * framesPerStep
+			// In skip mode the wipe is a reflection: after the bright sweep,
+			// fade the highlight back to the resting color instead of holding it.
+			fadeFrames := 0
+			if b.skipBeamPhase {
+				fadeFrames = 6
+			}
 
 			if char.sceneFrame < totalFrames {
 				step := char.sceneFrame / framesPerStep
@@ -628,6 +656,13 @@ func (b *BeamsTextEffect) updateCharacterAnimations() {
 				}
 				char.currentColor = char.brightenGradient[step]
 				char.sceneFrame++
+			} else if char.sceneFrame < totalFrames+fadeFrames {
+				t := float64(char.sceneFrame-totalFrames+1) / float64(fadeFrames)
+				char.currentColor = lerpBeamsHexColor(char.brightenGradient[gradientLen-1], b.baseColor, t)
+				char.sceneFrame++
+			} else if b.skipBeamPhase {
+				char.currentColor = b.baseColor
+				char.sceneActive = ""
 			}
 		}
 	}
@@ -688,12 +723,16 @@ func (b *BeamsTextEffect) Reset() {
 	b.currentDiag = 0
 	b.holdCounter = 0
 
-	for i := range b.chars {
-		b.chars[i].visible = false
-		b.chars[i].sceneActive = ""
-		b.chars[i].sceneFrame = 0
-		b.chars[i].currentSymbol = b.chars[i].original
-		b.chars[i].currentColor = ""
+	if b.skipBeamPhase {
+		b.primeRestingLogo()
+	} else {
+		for i := range b.chars {
+			b.chars[i].visible = false
+			b.chars[i].sceneActive = ""
+			b.chars[i].sceneFrame = 0
+			b.chars[i].currentSymbol = b.chars[i].original
+			b.chars[i].currentColor = ""
+		}
 	}
 
 	for i := range b.rowGroups {
@@ -731,6 +770,22 @@ func parseBeamsHexColor(hex string) [3]uint8 {
 // formatBeamsHexColor converts RGB to hex
 func formatBeamsHexColor(rgb [3]uint8) string {
 	return fmt.Sprintf("#%02x%02x%02x", rgb[0], rgb[1], rgb[2])
+}
+
+// lerpBeamsHexColor linearly interpolates from -> to, t in [0,1]
+func lerpBeamsHexColor(from, to string, t float64) string {
+	if t < 0 {
+		t = 0
+	} else if t > 1 {
+		t = 1
+	}
+	a := parseBeamsHexColor(from)
+	c := parseBeamsHexColor(to)
+	return formatBeamsHexColor([3]uint8{
+		uint8(float64(a[0])*(1-t) + float64(c[0])*t),
+		uint8(float64(a[1])*(1-t) + float64(c[1])*t),
+		uint8(float64(a[2])*(1-t) + float64(c[2])*t),
+	})
 }
 
 // Resize reinitializes with new dimensions
