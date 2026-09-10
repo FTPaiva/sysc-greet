@@ -891,7 +891,7 @@ func (m *model) resetBeamsEffectForSession(sessionName string) {
 		}
 
 		// Get current theme colors
-		beamColors, finalColors := getThemeColorsForBeams(m.currentTheme)
+		beamColors, finalColors, baseColor := getThemeColorsForBeams(m.currentTheme)
 
 		// Reinitialize beams effect completely with new dimensions and colors
 		m.beamsEffect = animations.NewBeamsTextEffect(animations.BeamsTextConfig{
@@ -900,6 +900,7 @@ func (m *model) resetBeamsEffectForSession(sessionName string) {
 			Text:               ascii,
 			BeamGradientStops:  beamColors,
 			FinalGradientStops: finalColors,
+			BaseColor:          baseColor,
 			SkipBeamPhase:      true,
 		})
 	}

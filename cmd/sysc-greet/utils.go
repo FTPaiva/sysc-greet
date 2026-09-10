@@ -75,62 +75,16 @@ func extractCharsWithAnsi(line string) []string {
 	return chars
 }
 
-// getThemeColorsForBeams returns color palette for beams effect based on theme
-func getThemeColorsForBeams(themeName string) ([]string, []string) {
-	var beamGradientStops []string
-	var finalGradientStops []string
-
-	// Layer 1: Check custom themes first
-	if colors, ok := themes.GetThemeColorStrings(themeName); ok {
-		beamGradientStops = []string{colors.FgPrimary, colors.Secondary, colors.Primary}
-		finalGradientStops = []string{colors.FgMuted, colors.Primary, colors.FgPrimary}
-		return beamGradientStops, finalGradientStops
-	}
-
-	// Layer 2: Built-in themes
-	switch strings.ToLower(themeName) {
-	case "dracula":
-		beamGradientStops = []string{"#ffffff", "#8be9fd", "#bd93f9"}
-		finalGradientStops = []string{"#6272a4", "#bd93f9", "#f8f8f2"}
-	case "gruvbox":
-		beamGradientStops = []string{"#ffffff", "#fabd2f", "#fe8019"}
-		finalGradientStops = []string{"#504945", "#fabd2f", "#ebdbb2"}
-	case "nord":
-		beamGradientStops = []string{"#ffffff", "#88c0d0", "#81a1c1"}
-		finalGradientStops = []string{"#434c5e", "#88c0d0", "#eceff4"}
-	case "tokyo-night":
-		beamGradientStops = []string{"#ffffff", "#7dcfff", "#bb9af7"}
-		finalGradientStops = []string{"#414868", "#7aa2f7", "#c0caf5"}
-	case "catppuccin":
-		beamGradientStops = []string{"#ffffff", "#89dceb", "#cba6f7"}
-		finalGradientStops = []string{"#45475a", "#cba6f7", "#cdd6f4"}
-	case "material":
-		beamGradientStops = []string{"#ffffff", "#89ddff", "#bb86fc"}
-		finalGradientStops = []string{"#546e7a", "#89ddff", "#eceff1"}
-	case "solarized":
-		beamGradientStops = []string{"#ffffff", "#2aa198", "#268bd2"}
-		finalGradientStops = []string{"#586e75", "#2aa198", "#fdf6e3"}
-	case "monochrome":
-		beamGradientStops = []string{"#ffffff", "#c0c0c0", "#808080"}
-		finalGradientStops = []string{"#3a3a3a", "#9a9a9a", "#ffffff"}
-	case "transishardjob":
-		beamGradientStops = []string{"#ffffff", "#55cdfc", "#f7a8b8"}
-		finalGradientStops = []string{"#55cdfc", "#f7a8b8", "#ffffff"}
-	case "rama":
-		beamGradientStops = []string{"#edf2f4", "#ef233c", "#d90429"}
-		finalGradientStops = []string{"#8d99ae", "#ef233c", "#edf2f4"}
-	case "eldritch":
-		beamGradientStops = []string{"#ebfafa", "#37f499", "#04d1f9"}
-		finalGradientStops = []string{"#7081d0", "#a48cf2", "#ebfafa"}
-	case "dark":
-		beamGradientStops = []string{"#ffffff", "#cccccc", "#999999"}
-		finalGradientStops = []string{"#666666", "#cccccc", "#ffffff"}
-	default:
-		beamGradientStops = []string{"#ffffff", "#00D1FF", "#8A008A"}
-		finalGradientStops = []string{"#4A4A4A", "#00D1FF", "#FFFFFF"}
-	}
-
-	return beamGradientStops, finalGradientStops
+// getThemeColorsForBeams returns the beam palette, the final-wipe palette, and
+// the resting logo color for the beams effect. The logo rests at the active
+// theme's primary color (every theme, built-in or custom); the skip-beam wipe
+// is a plain white highlight that sweeps across and fades straight back to the
+// resting color (white -> primary, no grey ramp).
+func getThemeColorsForBeams(themeName string) (beam []string, final []string, baseColor string) {
+	c := themes.GetThemePalette(themeName)
+	beam = []string{c.FgPrimary, c.Secondary, c.Primary}
+	final = []string{"#ffffff"}
+	return beam, final, c.Primary
 }
 
 // getThemeColorsForPour returns color palette for pour effect based on theme

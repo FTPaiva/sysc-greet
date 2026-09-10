@@ -582,7 +582,7 @@ func (b *BeamsTextEffect) updateHoldPhase() {
 	b.holdCounter++
 	
 	// Hold for 6 seconds at ~20fps = 120 frames
-	if b.holdCounter >= 120 {
+	if b.holdCounter >= 80 {
 		b.Reset()
 	}
 }

@@ -478,6 +478,24 @@ func GetThemeColorStrings(themeName string) (ThemeColorStrings, bool) {
 	return ThemeColorStrings{}, false
 }
 
+// GetThemePalette returns hex color strings for ANY theme name (built-in or
+// custom), resolving through GetTheme so every name yields a usable palette
+// (unknown names fall back to Dracula). Case- and spacing-insensitive.
+func GetThemePalette(themeName string) ThemeColorStrings {
+	t := GetTheme(themeName)
+	return ThemeColorStrings{
+		BgBase:    colorToHex(t.BgBase),
+		BgActive:  colorToHex(t.BgActive),
+		Primary:   colorToHex(t.Primary),
+		Secondary: colorToHex(t.Secondary),
+		Accent:    colorToHex(t.Accent),
+		Warning:   colorToHex(t.Warning),
+		Danger:    colorToHex(t.Danger),
+		FgPrimary: colorToHex(t.FgPrimary),
+		FgMuted:   colorToHex(t.FgMuted),
+	}
+}
+
 // colorToHex converts a color.Color to hex string
 // Returns #000000 if color is nil (safe fallback)
 func colorToHex(c color.Color) string {

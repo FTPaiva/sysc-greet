@@ -708,9 +708,12 @@ func initialModel(config Config, screensaverMode bool) model {
 		typewriterTicker: nil,
 	}
 
-	// Test mode skips cached preferences, so SYSC_BG lets a background effect
-	// be exercised directly: SYSC_BG=fire sysc-greet --test
+	// Test mode skips cached preferences, so --theme / SYSC_BG let the theme and
+	// a background effect be exercised directly: sysc-greet --test --theme nord
 	if config.TestMode {
+		if config.ThemeName != "" {
+			m.currentTheme = config.ThemeName
+		}
 		if bg := os.Getenv("SYSC_BG"); bg != "" {
 			m.selectedBackground = bg
 		}
@@ -814,7 +817,7 @@ func initialModel(config Config, screensaverMode bool) model {
 							variantIndex = 0
 						}
 						ascii := asciiConfig.ASCIIVariants[variantIndex]
-						beamColors, finalColors := getThemeColorsForBeams(m.currentTheme)
+						beamColors, finalColors, baseColor := getThemeColorsForBeams(m.currentTheme)
 						lines := strings.Split(ascii, "\n")
 						asciiHeight := len(lines)
 						asciiWidth := 0
@@ -829,6 +832,7 @@ func initialModel(config Config, screensaverMode bool) model {
 							Text:               ascii,
 							BeamGradientStops:  beamColors,
 							FinalGradientStops: finalColors,
+							BaseColor:          baseColor,
 							SkipBeamPhase:      true,
 						})
 					}
@@ -2291,7 +2295,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 								}
 								ascii := asciiConfig.ASCIIVariants[variantIndex]
 
-								beamColors, finalColors := getThemeColorsForBeams(m.currentTheme)
+								beamColors, finalColors, baseColor := getThemeColorsForBeams(m.currentTheme)
 								if m.config.Debug {
 									logDebug("Initializing beams with theme: %s, beamColors: %v, finalColors: %v", m.currentTheme, beamColors, finalColors)
 								}
@@ -2311,6 +2315,7 @@ func (m model) handleKeyInput(msg tea.KeyMsg) (model, tea.Cmd) {
 									Text:               ascii,
 									BeamGradientStops:  beamColors,
 									FinalGradientStops: finalColors,
+									BaseColor:          baseColor,
 									SkipBeamPhase:      true,
 								})
 								if m.config.Debug {
